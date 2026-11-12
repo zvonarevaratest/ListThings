@@ -52,17 +52,33 @@
         }
 
         .result {
-            margin-top: 20px;
-            font-size: 22px;
             font-size: 32px;
             font-weight: bold;
             text-align: center;
+        }
+
+        .change-name {
+            display: inline-block;
+            margin-top: 16px;
+            color: #2563eb;
+            cursor: pointer;
         }
     </style>
 </head>
 
 <body>
-<div class="container" id="formContainer">
+
+<!-- Первоначальное приветствие -->
+<div class="container" id="welcomeContainer">
+    <div id="result" class="result"></div>
+
+    <a href="#" id="changeName" class="change-name">
+        Это не ты?
+    </a>
+</div>
+
+<!-- Форма ввода имени -->
+<div class="container" id="formContainer" style="display: none;">
     <h1>ListThings</h1>
     <p>Как тебя зовут?</p>
 
@@ -77,9 +93,7 @@
 
         <button type="submit">Отправить</button>
     </form>
-
 </div>
-<div id="result" class="result"></div>
 
 <script>
     const form = document.getElementById("nameForm");
@@ -87,11 +101,50 @@
     const error = document.getElementById("error");
     const result = document.getElementById("result");
 
+    const welcomeContainer =
+        document.getElementById("welcomeContainer");
+
+    const formContainer =
+        document.getElementById("formContainer");
+
+    const changeName =
+        document.getElementById("changeName");
+
+
+    // Получаем случайное имя из базы данных
+    async function loadRandomName() {
+        try {
+            const response = await fetch("/random-name");
+
+            if (!response.ok) {
+                throw new Error("Ошибка сервера");
+            }
+
+            const name = await response.text();
+
+            result.textContent = "Hello " + name;
+
+        } catch (e) {
+            result.textContent = "Не удалось загрузить имя";
+            changeName.style.display = "none";
+        }
+    }
+
+
+    // Открываем форму по ссылке
+    changeName.addEventListener("click", function(event) {
+        event.preventDefault();
+
+        welcomeContainer.style.display = "none";
+        formContainer.style.display = "block";
+    });
+
+
+    // Обрабатываем отправку формы
     form.addEventListener("submit", async function(event) {
         event.preventDefault();
 
         error.textContent = "";
-        result.textContent = "";
 
         const name = input.value.trim();
 
@@ -103,15 +156,26 @@
             const message = await response.text();
 
             if (response.ok) {
-                document.getElementById("formContainer").style.display = "none";
+                formContainer.style.display = "none";
+
                 result.textContent = message;
+                changeName.style.display = "none";
+
+                welcomeContainer.style.display = "block";
+
             } else {
                 error.textContent = message;
             }
+
         } catch (e) {
             error.textContent = "Не удалось связаться с сервером.";
         }
     });
+
+
+    // Запускаем получение имени при открытии страницы
+    loadRandomName();
+
 </script>
 </body>
 </html>
