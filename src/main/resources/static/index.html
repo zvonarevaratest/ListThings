@@ -1,181 +1,90 @@
-
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ListThings</title>
-
-    <style>
-        body {
-            margin: 0;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-family: Arial, sans-serif;
-            background: #f5f6f8;
-        }
-
-        .container {
-            width: 320px;
-            padding: 32px;
-            text-align: center;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px #00000012;
-        }
-
-        input, button {
-            box-sizing: border-box;
-            width: 100%;
-            padding: 12px;
-            margin-top: 12px;
-            font-size: 16px;
-            border-radius: 6px;
-        }
-
-        input {
-            border: 1px solid #ccc;
-        }
-
-        button {
-            background: #2563eb;
-            border: none;
-            color: white;
-            cursor: pointer;
-        }
-
-        .error {
-            color: #dc2626;
-            font-size: 14px;
-        }
-
-        .result {
-            font-size: 32px;
-            font-weight: bold;
-            text-align: center;
-        }
-
-        .change-name {
-            display: inline-block;
-            margin-top: 16px;
-            color: #2563eb;
-            cursor: pointer;
-        }
-    </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ListThings — список в поездку</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, -apple-system, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f7f8fa; color: #142536; }
+    main { max-width: 960px; margin: 0 auto; padding: 30px 18px 60px; }
+    h1 { margin-bottom: 6px; } p { color: #506273; }
+    .panel { background: white; border: 1px solid #dce4ea; border-radius: 14px; padding: 20px; margin: 16px 0; }
+    .groups { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px; }
+    .options { display: grid; gap: 10px; }
+    label { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+    input { width: 18px; height: 18px; accent-color: #175cd3; }
+    button { background: #175cd3; color: white; padding: 12px 20px; border: 0; border-radius: 9px; font: inherit; cursor: pointer; }
+    button:disabled { background: #93a5bb; cursor: not-allowed; }
+    .result { columns: 2 260px; padding-left: 22px; }
+    .result li { break-inside: avoid; padding: 5px 0; }
+    .error { color: #b42318; }
+    @media(max-width: 560px) { .groups { grid-template-columns: 1fr; } }
+  </style>
 </head>
-
 <body>
-
-<!-- Первоначальное приветствие -->
-<div class="container" id="welcomeContainer">
-    <div id="result" class="result"></div>
-
-    <a href="#" id="changeName" class="change-name">
-        Это не ты?
-    </a>
-</div>
-
-<!-- Форма ввода имени -->
-<div class="container" id="formContainer" style="display: none;">
-    <h1>ListThings</h1>
-    <p>Как тебя зовут?</p>
-
-    <form id="nameForm" novalidate>
-        <input
-                id="name"
-                type="text"
-                placeholder="Введите имя"
-        >
-
-        <p id="error" class="error"></p>
-
-        <button type="submit">Отправить</button>
-    </form>
-</div>
-
+<main>
+  <h1>ListThings</h1>
+  <p>Выбери транспорт и, если нужно, размещение. Универсальные вещи добавятся автоматически.</p>
+  <div class="groups">
+    <section class="panel"><h2>Транспорт</h2><div class="options" id="transport">Загрузка...</div></section>
+    <section class="panel"><h2>Размещение</h2><div class="options" id="accommodation">Загрузка...</div></section>
+  </div>
+  <button id="generate" disabled>Создать список</button>
+  <p class="error" id="error" role="alert"></p>
+  <section class="panel" id="results" hidden>
+    <h2 id="count">Список вещей</h2>
+    <ol class="result" id="items"></ol>
+  </section>
+</main>
 <script>
-    const form = document.getElementById("nameForm");
-    const input = document.getElementById("name");
-    const error = document.getElementById("error");
-    const result = document.getElementById("result");
-
-    const welcomeContainer =
-        document.getElementById("welcomeContainer");
-
-    const formContainer =
-        document.getElementById("formContainer");
-
-    const changeName =
-        document.getElementById("changeName");
-
-
-    // Получаем случайное имя из базы данных
-    async function loadRandomName() {
-        try {
-            const response = await fetch("/random-name");
-
-            if (!response.ok) {
-                throw new Error("Ошибка сервера");
-            }
-
-            const name = await response.text();
-
-            result.textContent = "Hello " + name;
-
-        } catch (e) {
-            result.textContent = "Не удалось загрузить имя";
-            changeName.style.display = "none";
-        }
-    }
-
-
-    // Открываем форму по ссылке
-    changeName.addEventListener("click", function(event) {
-        event.preventDefault();
-
-        welcomeContainer.style.display = "none";
-        formContainer.style.display = "block";
-    });
-
-
-    // Обрабатываем отправку формы
-    form.addEventListener("submit", async function(event) {
-        event.preventDefault();
-
-        error.textContent = "";
-
-        const name = input.value.trim();
-
-        try {
-            const response = await fetch(
-                "/hello?name=" + encodeURIComponent(name)
-            );
-
-            const message = await response.text();
-
-            if (response.ok) {
-                formContainer.style.display = "none";
-
-                result.textContent = message;
-                changeName.style.display = "none";
-
-                welcomeContainer.style.display = "block";
-
-            } else {
-                error.textContent = message;
-            }
-
-        } catch (e) {
-            error.textContent = "Не удалось связаться с сервером.";
-        }
-    });
-
-
-    // Запускаем получение имени при открытии страницы
-    loadRandomName();
-
+  const transport = document.querySelector('#transport');
+  const accommodation = document.querySelector('#accommodation');
+  const generate = document.querySelector('#generate');
+  const error = document.querySelector('#error');
+  const results = document.querySelector('#results');
+  const items = document.querySelector('#items');
+  function selectedIds() { return [...document.querySelectorAll('input[type=checkbox]:checked')].map(el=>el.value); }
+  function syncButton() { generate.disabled = !transport.querySelector('input:checked'); }
+  async function init() {
+    try {
+      const response = await fetch('/api/catalog/categories');
+      if (!response.ok) throw new Error('Не удалось прочитать категории из MySQL');
+      const categories = await response.json();
+      transport.replaceChildren(); accommodation.replaceChildren();
+      for (const category of categories) {
+        const target = category.type === 'TRANSPORT' ? transport : category.type === 'ACCOMMODATION' ? accommodation : null;
+        if (!target) continue;
+        const label = document.createElement('label');
+        const input = document.createElement('input');
+        input.type = 'checkbox'; input.value = category.id;
+        input.addEventListener('change', syncButton);
+        label.append(input, document.createTextNode(category.name));
+        target.append(label);
+      }
+    } catch(e) { transport.textContent = ''; accommodation.textContent = ''; error.textContent = e.message; }
+  }
+  generate.addEventListener('click', async () => {
+    error.textContent = '';
+    try {
+      const params = new URLSearchParams();
+      for (const id of selectedIds()) params.append('categoryIds', id);
+      const response = await fetch('/api/catalog/items?' + params);
+      if (!response.ok) throw new Error('Не удалось сформировать список');
+      const data = await response.json();
+      items.replaceChildren();
+      for (const item of data) {
+        const li = document.createElement('li');
+        li.textContent = item.name;
+        items.append(li);
+      }
+      document.querySelector('#count').textContent = `Список вещей (${data.length})`;
+      results.hidden = false;
+      results.scrollIntoView({behavior:'smooth', block:'start'});
+    } catch(e) { error.textContent = e.message; }
+  });
+  init();
 </script>
 </body>
 </html>
