@@ -4,34 +4,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ListThings — список в поездку</title>
-  <style>
-    :root { color-scheme: light; font-family: system-ui, -apple-system, sans-serif; }
-    * { box-sizing: border-box; }
-    body { margin: 0; background: #f7f8fa; color: #142536; }
-    main { max-width: 960px; margin: 0 auto; padding: 30px 18px 60px; }
-    h1 { margin-bottom: 6px; } p { color: #506273; }
-    .panel { background: white; border: 1px solid #dce4ea; border-radius: 14px; padding: 20px; margin: 16px 0; }
-    .groups { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px; }
-    .options { display: grid; gap: 10px; }
-    label { display: flex; align-items: center; gap: 10px; cursor: pointer; }
-    input { width: 18px; height: 18px; accent-color: #175cd3; }
-    button { background: #175cd3; color: white; padding: 12px 20px; border: 0; border-radius: 9px; font: inherit; cursor: pointer; }
-    button:disabled { background: #93a5bb; cursor: not-allowed; }
-    .result { columns: 2 260px; padding-left: 22px; }
-    .result li { break-inside: avoid; padding: 5px 0; }
-    .error { color: #b42318; }
-    @media(max-width: 560px) { .groups { grid-template-columns: 1fr; } }
-  </style>
+  <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 <main>
   <h1>ListThings</h1>
-  <p>Выбери транспорт и, если нужно, размещение. Универсальные вещи добавятся автоматически.</p>
+  <p>Выбери транспорт и размещение, если они нужны. Без выбора категорий создастся список универсальных вещей.</p>
   <div class="groups">
     <section class="panel"><h2>Транспорт</h2><div class="options" id="transport">Загрузка...</div></section>
     <section class="panel"><h2>Размещение</h2><div class="options" id="accommodation">Загрузка...</div></section>
   </div>
-  <button id="generate" disabled>Создать список</button>
+  <button id="generate">Создать список</button>
   <p class="error" id="error" role="alert"></p>
   <section class="panel" id="results" hidden>
     <h2 id="count">Список вещей</h2>
@@ -46,7 +29,6 @@
   const results = document.querySelector('#results');
   const items = document.querySelector('#items');
   function selectedIds() { return [...document.querySelectorAll('input[type=checkbox]:checked')].map(el=>el.value); }
-  function syncButton() { generate.disabled = !transport.querySelector('input:checked'); }
   async function init() {
     try {
       const response = await fetch('/api/catalog/categories');
@@ -59,7 +41,6 @@
         const label = document.createElement('label');
         const input = document.createElement('input');
         input.type = 'checkbox'; input.value = category.id;
-        input.addEventListener('change', syncButton);
         label.append(input, document.createTextNode(category.name));
         target.append(label);
       }
