@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ListThings — каталог вещей</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/admin.css">
+  <script src="/admin-common.js" defer></script>
+  <script src="/admin.js" defer></script>
+</head>
+<body>
+<main>
+  <a class="home-link" href="/">← К списку в поездку</a>
+  <nav class="admin-nav" aria-label="Разделы админки">
+    <a href="/admin" aria-current="page">Вещи</a>
+    <a href="/admin/categories">Категории</a>
+  </nav>
+  <header class="catalog-header">
+    <h1>Каталог вещей</h1>
+    <button id="add" type="button" disabled>+ Добавить вещь</button>
+  </header>
+  <fieldset class="panel filters" id="filters" disabled>
+    <legend>Поиск и фильтр</legend>
+    <label for="search">Название вещи
+      <input id="search" type="search" placeholder="Введите название">
+    </label>
+    <label for="category">Категория
+      <select id="category">
+        <option value="">Все категории</option>
+      </select>
+    </label>
+  </fieldset>
+  <p id="notice" class="notice" role="status"></p>
+  <p id="error" class="error" role="alert"></p>
+  <button id="retry" type="button" hidden>Повторить загрузку</button>
+  <p id="status" role="status">Загрузка каталога…</p>
+  <table id="catalog" class="catalog" aria-label="Вещи и категории" hidden>
+    <thead>
+      <tr>
+        <th scope="col">Вещь</th>
+        <th scope="col">Категории</th>
+        <th scope="col">Действия</th>
+      </tr>
+    </thead>
+    <tbody id="items"></tbody>
+  </table>
+
+  <dialog id="item-dialog" aria-labelledby="dialog-title">
+    <form id="item-form">
+      <h2 id="dialog-title"></h2>
+      <label id="name-field" for="item-name">Название вещи
+        <input id="item-name" type="text" required>
+      </label>
+      <fieldset id="category-fields">
+        <legend>Категории (необязательно)</legend>
+        <div id="category-options"></div>
+      </fieldset>
+      <p id="delete-question" hidden></p>
+      <p id="form-error" class="error" role="alert"></p>
+      <div class="dialog-actions">
+        <button id="cancel" class="secondary" type="button">Отмена</button>
+        <button id="submit" type="submit">Сохранить</button>
+      </div>
+    </form>
+  </dialog>
+</main>
+</body>
+</html>
