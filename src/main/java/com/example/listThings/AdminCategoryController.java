@@ -47,13 +47,13 @@ public class AdminCategoryController {
 
     @PostMapping("/api/admin/categories")
     public ResponseEntity<Void> create(@RequestBody CategoryRequest request) {
-        categoryService.create(request.name(), request.type());
+        categoryService.create(request.name(), request.type(), request.itemIds());
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     @PutMapping("/api/admin/categories/{id}")
     public ResponseEntity<Void> update(@PathVariable long id, @RequestBody CategoryRequest request) {
-        categoryService.update(id, request.name(), request.type());
+        categoryService.update(id, request.name(), request.type(), request.itemIds());
         return ResponseEntity.noContent().build();
     }
 
@@ -90,6 +90,6 @@ public class AdminCategoryController {
                 "Не удалось выполнить операцию с категориями. Попробуйте ещё раз.");
     }
 
-    public record CategoryRequest(String name, String type) {
+    public record CategoryRequest(String name, String type, List<String> itemIds) {
     }
 }
