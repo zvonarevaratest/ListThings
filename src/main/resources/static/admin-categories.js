@@ -15,18 +15,45 @@ const dialogTitle = document.querySelector('#dialog-title');
 const editFields = document.querySelector('#edit-fields');
 const categoryName = document.querySelector('#category-name');
 const categoryType = document.querySelector('#category-type');
+const itemPicker = document.querySelector('#item-picker');
+const itemSearch = document.querySelector('#item-search');
+const itemOptions = document.querySelector('#item-options');
+const itemSearchEmpty = document.querySelector('#item-search-empty');
+const selectedItemsCount = document.querySelector('#selected-items-count');
+const clearItems = document.querySelector('#clear-items');
 const deleteQuestion = document.querySelector('#delete-question');
 const formError = document.querySelector('#form-error');
 const cancel = document.querySelector('#cancel');
 const submit = document.querySelector('#submit');
 
 const categoriesUrl = '/api/admin/categories';
+const activities = location.pathname === '/admin/activities';
+const activityType = 'ACTIVITY';
 let categories = [];
 let operation;
 
-for (const type of ['UNIVERSAL', 'TRANSPORT', 'ACCOMMODATION']) {
-  typeFilter.add(new Option(type, type));
-  categoryType.add(new Option(type, type));
+if (activities) {
+  document.title = 'ListThings — цели поездки';
+  document.querySelector('h1').textContent = 'Цели поездки';
+  document.querySelector('.admin-nav [aria-current]').removeAttribute('aria-current');
+  document.querySelector('.admin-nav a[href="/admin/activities"]').setAttribute('aria-current', 'page');
+  document.querySelector('#search-label').textContent = 'Название цели';
+  document.querySelector('#name-label').textContent = 'Название цели';
+  document.querySelector('#item-picker-title').textContent = 'Вещи для этой цели';
+  document.querySelector('#filters legend').textContent = 'Поиск';
+  document.querySelector('#catalog thead th').textContent = 'Цель поездки';
+  document.querySelector('#catalog thead th:nth-child(2)').hidden = true;
+  catalog.setAttribute('aria-label', 'Цели поездки и количество вещей');
+  typeFilter.closest('label').hidden = true;
+  categoryType.closest('label').hidden = true;
+  categoryType.disabled = true;
+  add.textContent = '+ Добавить цель';
+  statusMessage.textContent = 'Загрузка целей поездки…';
+} else {
+  for (const type of ['UNIVERSAL', 'TRANSPORT', 'ACCOMMODATION']) {
+    typeFilter.add(new Option(type, type));
+    categoryType.add(new Option(type, type));
+  }
 }
 
 function renderCategories() {
@@ -44,6 +71,7 @@ function renderCategories() {
     name.textContent = entry.name;
     const typeCell = document.createElement('td');
     typeCell.textContent = entry.type;
+    typeCell.hidden = activities;
     const count = document.createElement('td');
     count.textContent = entry.itemCount;
     const actions = document.createElement('td');
@@ -62,7 +90,9 @@ function renderCategories() {
   catalog.hidden = matches.length === 0;
   statusMessage.textContent = matches.length > 0
     ? 'Показано: ' + matches.length + ' из ' + categories.length
-    : categories.length === 0 ? 'В каталоге пока нет категорий.' : 'Подходящие категории не найдены.';
+    : categories.length === 0
+      ? (activities ? 'Цели поездки пока не добавлены.' : 'В каталоге пока нет категорий.')
+      : (activities ? 'Подходящие цели не найдены.' : 'Подходящие категории не найдены.');
 }
 
 async function loadCategories() {
@@ -71,10 +101,10 @@ async function loadCategories() {
   retry.hidden = true;
   catalog.inert = true;
   error.textContent = '';
-  statusMessage.textContent = 'Загрузка категорий…';
+  statusMessage.textContent = activities ? 'Загрузка целей поездки…' : 'Загрузка категорий…';
   try {
     const response = await request(categoriesUrl);
-    categories = await response.json();
+    categories = (await response.json()).filter(entry => (entry.type === activityType) === activities);
     filters.disabled = false;
     add.disabled = false;
     renderCategories();
@@ -82,29 +112,94 @@ async function loadCategories() {
   } catch {
     catalog.hidden = true;
     statusMessage.textContent = '';
-    error.textContent = 'Не удалось загрузить категории.';
+    error.textContent = activities ? 'Не удалось загрузить цели поездки.' : 'Не удалось загрузить категории.';
     retry.hidden = false;
   }
 }
 
-function openDialog(mode, entry) {
-  operation = { mode, entry };
+function renderItemOptions(items, categoryId) {
+  const options = document.createDocumentFragment();
+  const byName = new Intl.Collator('ru');
+  items.sort((a, b) => byName.compare(a.name, b.name));
+  for (const item of items) {
+    const label = document.createElement('label');
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.name = 'itemIds';
+    checkbox.value = item.id;
+    checkbox.checked = item.categories.some(link => link.id === categoryId);
+    label.append(checkbox, document.createTextNode(item.name));
+    options.append(label);
+  }
+  itemOptions.replaceChildren(options);
+  itemOptions.scrollTop = 0;
+  filterItemOptions();
+  updateSelectedItemsCount();
+}
+
+function filterItemOptions() {
+  const query = itemSearch.value.trim().toLowerCase();
+  let found = false;
+  for (const label of itemOptions.children) {
+    const matches = label.textContent.toLowerCase().includes(query);
+    label.hidden = !matches;
+    found ||= matches;
+  }
+  itemOptions.hidden = !found;
+  itemSearchEmpty.hidden = found;
+  itemSearchEmpty.textContent = itemOptions.children.length
+    ? 'Подходящие вещи не найдены.'
+    : 'В каталоге пока нет вещей.';
+}
+
+function updateSelectedItemsCount() {
+  const count = itemOptions.querySelectorAll('input:checked').length;
+  selectedItemsCount.textContent = 'Выбрано вещей: ' + count;
+  clearItems.disabled = count === 0;
+}
+
+async function openDialog(mode, entry) {
+  const currentOperation = { mode, entry };
+  operation = currentOperation;
   const deleting = mode === 'delete';
   form.reset();
   formError.textContent = '';
-  dialogTitle.textContent = deleting ? 'Удалить категорию?' : mode === 'create' ? 'Добавить категорию' : 'Изменить категорию';
+  const subject = activities ? 'цель' : 'категорию';
+  dialogTitle.textContent = deleting ? 'Удалить ' + subject + '?' : (mode === 'create' ? 'Добавить ' : 'Изменить ') + subject;
   editFields.hidden = deleting;
   editFields.disabled = deleting;
   categoryName.value = entry?.name ?? '';
   categoryType.value = entry?.type ?? '';
   deleteQuestion.hidden = !deleting;
   deleteQuestion.textContent = deleting
-    ? 'Удалить категорию «' + entry.name + '»? Связи будут удалены, а вещи останутся в каталоге.'
+    ? 'Удалить ' + subject + ' «' + entry.name + '»? Связи будут удалены, а вещи останутся в каталоге.'
     : '';
   submit.textContent = deleting ? 'Удалить' : 'Сохранить';
   submit.classList.toggle('danger', deleting);
+  submit.disabled = !deleting;
+  if (!deleting) {
+    itemPicker.disabled = true;
+    itemOptions.replaceChildren();
+    itemOptions.hidden = true;
+    selectedItemsCount.textContent = '';
+    itemSearchEmpty.hidden = false;
+    itemSearchEmpty.textContent = 'Загрузка вещей…';
+  }
   dialog.showModal();
   (deleting ? cancel : categoryName).focus();
+  if (deleting) return;
+
+  try {
+    const response = await request('/api/admin/items');
+    const items = await response.json();
+    if (!dialog.open || operation !== currentOperation) return;
+    renderItemOptions(items, entry?.id);
+    itemPicker.disabled = false;
+    submit.disabled = false;
+  } catch {
+    if (!dialog.open || operation !== currentOperation) return;
+    itemSearchEmpty.textContent = 'Не удалось загрузить вещи. Откройте форму заново.';
+  }
 }
 
 form.addEventListener('submit', async event => {
@@ -113,7 +208,9 @@ form.addEventListener('submit', async event => {
   const { mode, entry } = operation;
   const name = categoryName.value.trim();
   if (mode !== 'delete' && (!name || [...name].length > 100)) {
-    formError.textContent = !name ? 'Введите название категории.' : 'Название категории должно содержать не более 100 символов.';
+    const entity = activities ? 'цели' : 'категории';
+    formError.textContent = !name ? 'Введите название ' + entity + '.'
+      : 'Название ' + entity + ' должно содержать не более 100 символов.';
     categoryName.focus();
     return;
   }
@@ -122,7 +219,11 @@ form.addEventListener('submit', async event => {
   if (mode !== 'delete') {
     options.method = mode === 'create' ? 'POST' : 'PUT';
     options.headers = { 'Content-Type': 'application/json' };
-    options.body = JSON.stringify({ name, type: categoryType.value });
+    options.body = JSON.stringify({
+      name,
+      type: activities ? activityType : categoryType.value,
+      itemIds: new FormData(form).getAll('itemIds')
+    });
   }
 
   formError.textContent = '';
@@ -133,7 +234,8 @@ form.addEventListener('submit', async event => {
   try {
     await request(entry ? categoriesUrl + '/' + encodeURIComponent(entry.id) : categoriesUrl, options);
     dialog.close();
-    notice.textContent = mode === 'create' ? 'Категория добавлена.' : mode === 'edit' ? 'Изменения сохранены.' : 'Категория удалена.';
+    notice.textContent = mode === 'edit' ? 'Изменения сохранены.'
+      : (activities ? 'Цель' : 'Категория') + (mode === 'create' ? ' добавлена.' : ' удалена.');
     await loadCategories();
     (add.disabled ? retry : add).focus({ preventScroll: !add.disabled });
   } catch (failure) {
@@ -148,7 +250,7 @@ form.addEventListener('submit', async event => {
 });
 
 dialog.addEventListener('cancel', event => {
-  if (submit.disabled) event.preventDefault();
+  if (cancel.disabled) event.preventDefault();
 });
 cancel.addEventListener('click', () => dialog.close());
 add.addEventListener('click', () => openDialog('create'));
@@ -156,3 +258,13 @@ retry.addEventListener('click', loadCategories);
 search.addEventListener('input', renderCategories);
 typeFilter.addEventListener('change', renderCategories);
 loadCategories();
+
+itemSearch.addEventListener('input', filterItemOptions);
+itemOptions.addEventListener('change', updateSelectedItemsCount);
+clearItems.addEventListener('click', () => {
+  for (const checkbox of itemOptions.querySelectorAll('input:checked')) {
+    checkbox.checked = false;
+  }
+  updateSelectedItemsCount();
+  itemSearch.focus();
+});

@@ -9,10 +9,11 @@
 <body>
 <main>
   <h1>ListThings</h1>
-  <p>Выбери транспорт и размещение, если они нужны. Без выбора категорий создастся список универсальных вещей.</p>
+  <p>Выбери транспорт, размещение и цели поездки, которые тебе подходят. Без выбора категорий создастся список универсальных вещей.</p>
   <div class="groups">
     <section class="panel"><h2>Транспорт</h2><div class="options" id="transport">Загрузка...</div></section>
     <section class="panel"><h2>Размещение</h2><div class="options" id="accommodation">Загрузка...</div></section>
+    <section class="panel activity-panel"><h2>Цель поездки</h2><div class="options" id="activity">Загрузка...</div></section>
   </div>
   <button id="generate">Создать список</button>
   <p class="error" id="error" role="alert"></p>
@@ -22,8 +23,11 @@
   </section>
 </main>
 <script>
-  const transport = document.querySelector('#transport');
-  const accommodation = document.querySelector('#accommodation');
+  const categoryGroups = new Map([
+    ['TRANSPORT', document.querySelector('#transport')],
+    ['ACCOMMODATION', document.querySelector('#accommodation')],
+    ['ACTIVITY', document.querySelector('#activity')]
+  ]);
   const generate = document.querySelector('#generate');
   const error = document.querySelector('#error');
   const results = document.querySelector('#results');
@@ -34,9 +38,9 @@
       const response = await fetch('/api/catalog/categories');
       if (!response.ok) throw new Error('Не удалось прочитать категории из MySQL');
       const categories = await response.json();
-      transport.replaceChildren(); accommodation.replaceChildren();
+      for (const group of categoryGroups.values()) group.replaceChildren();
       for (const category of categories) {
-        const target = category.type === 'TRANSPORT' ? transport : category.type === 'ACCOMMODATION' ? accommodation : null;
+        const target = categoryGroups.get(category.type);
         if (!target) continue;
         const label = document.createElement('label');
         const input = document.createElement('input');
@@ -44,7 +48,12 @@
         label.append(input, document.createTextNode(category.name));
         target.append(label);
       }
-    } catch(e) { transport.textContent = ''; accommodation.textContent = ''; error.textContent = e.message; }
+      const activity = categoryGroups.get('ACTIVITY');
+      if (!activity.childElementCount) activity.textContent = 'Цели поездки пока не добавлены.';
+    } catch(e) {
+      for (const group of categoryGroups.values()) group.replaceChildren();
+      error.textContent = e.message;
+    }
   }
   generate.addEventListener('click', async () => {
     error.textContent = '';

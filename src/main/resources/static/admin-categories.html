@@ -15,6 +15,7 @@
   <nav class="admin-nav" aria-label="Разделы админки">
     <a href="/admin">Вещи</a>
     <a href="/admin/categories" aria-current="page">Категории</a>
+    <a href="/admin/activities">Цели поездки</a>
   </nav>
   <header class="catalog-header">
     <h1>Категории</h1>
@@ -22,7 +23,7 @@
   </header>
   <fieldset class="panel filters" id="filters" disabled>
     <legend>Поиск и фильтр</legend>
-    <label for="search">Название категории
+    <label for="search"><span id="search-label">Название категории</span>
       <input id="search" type="search" placeholder="Введите название">
     </label>
     <label for="type-filter">Тип
@@ -51,7 +52,7 @@
     <form id="category-form">
       <h2 id="dialog-title"></h2>
       <fieldset class="category-edit-fields" id="edit-fields">
-        <label for="category-name">Название категории
+        <label for="category-name"><span id="name-label">Название категории</span>
           <input id="category-name" type="text" required>
         </label>
         <label for="category-type">Тип
@@ -59,6 +60,18 @@
             <option value="">Выберите тип</option>
           </select>
         </label>
+        <fieldset class="item-picker" id="item-picker">
+          <legend id="item-picker-title">Вещи категории</legend>
+          <label for="item-search">Поиск по вещам
+            <input id="item-search" type="search" placeholder="Введите название вещи">
+          </label>
+          <div class="item-picker-actions">
+            <span id="selected-items-count" role="status"></span>
+            <button id="clear-items" class="secondary" type="button">Снять все отметки</button>
+          </div>
+          <div id="item-options" class="item-options"></div>
+          <p id="item-search-empty" class="item-search-empty" role="status" hidden></p>
+        </fieldset>
       </fieldset>
       <p id="delete-question" hidden></p>
       <p id="form-error" class="error" role="alert"></p>
