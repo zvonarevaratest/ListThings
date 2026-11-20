@@ -59,6 +59,18 @@
             <option value="">Выберите тип</option>
           </select>
         </label>
+        <fieldset class="item-picker" id="item-picker">
+          <legend>Вещи категории</legend>
+          <label for="item-search">Поиск по вещам
+            <input id="item-search" type="search" placeholder="Введите название вещи">
+          </label>
+          <div class="item-picker-actions">
+            <span id="selected-items-count" role="status"></span>
+            <button id="clear-items" class="secondary" type="button">Снять все отметки</button>
+          </div>
+          <div id="item-options" class="item-options"></div>
+          <p id="item-search-empty" class="item-search-empty" role="status" hidden></p>
+        </fieldset>
       </fieldset>
       <p id="delete-question" hidden></p>
       <p id="form-error" class="error" role="alert"></p>

@@ -15,6 +15,12 @@ const dialogTitle = document.querySelector('#dialog-title');
 const editFields = document.querySelector('#edit-fields');
 const categoryName = document.querySelector('#category-name');
 const categoryType = document.querySelector('#category-type');
+const itemPicker = document.querySelector('#item-picker');
+const itemSearch = document.querySelector('#item-search');
+const itemOptions = document.querySelector('#item-options');
+const itemSearchEmpty = document.querySelector('#item-search-empty');
+const selectedItemsCount = document.querySelector('#selected-items-count');
+const clearItems = document.querySelector('#clear-items');
 const deleteQuestion = document.querySelector('#delete-question');
 const formError = document.querySelector('#form-error');
 const cancel = document.querySelector('#cancel');
@@ -87,8 +93,50 @@ async function loadCategories() {
   }
 }
 
-function openDialog(mode, entry) {
-  operation = { mode, entry };
+function renderItemOptions(items, categoryId) {
+  const options = document.createDocumentFragment();
+  const byName = new Intl.Collator('ru');
+  items.sort((a, b) => byName.compare(a.name, b.name));
+  for (const item of items) {
+    const label = document.createElement('label');
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.name = 'itemIds';
+    checkbox.value = item.id;
+    checkbox.checked = item.categories.some(link => link.id === categoryId);
+    label.append(checkbox, document.createTextNode(item.name));
+    options.append(label);
+  }
+  itemOptions.replaceChildren(options);
+  itemOptions.scrollTop = 0;
+  filterItemOptions();
+  updateSelectedItemsCount();
+}
+
+function filterItemOptions() {
+  const query = itemSearch.value.trim().toLowerCase();
+  let found = false;
+  for (const label of itemOptions.children) {
+    const matches = label.textContent.toLowerCase().includes(query);
+    label.hidden = !matches;
+    found ||= matches;
+  }
+  itemOptions.hidden = !found;
+  itemSearchEmpty.hidden = found;
+  itemSearchEmpty.textContent = itemOptions.children.length
+    ? 'Подходящие вещи не найдены.'
+    : 'В каталоге пока нет вещей.';
+}
+
+function updateSelectedItemsCount() {
+  const count = itemOptions.querySelectorAll('input:checked').length;
+  selectedItemsCount.textContent = 'Выбрано вещей: ' + count;
+  clearItems.disabled = count === 0;
+}
+
+async function openDialog(mode, entry) {
+  const currentOperation = { mode, entry };
+  operation = currentOperation;
   const deleting = mode === 'delete';
   form.reset();
   formError.textContent = '';
@@ -103,8 +151,30 @@ function openDialog(mode, entry) {
     : '';
   submit.textContent = deleting ? 'Удалить' : 'Сохранить';
   submit.classList.toggle('danger', deleting);
+  submit.disabled = !deleting;
+  if (!deleting) {
+    itemPicker.disabled = true;
+    itemOptions.replaceChildren();
+    itemOptions.hidden = true;
+    selectedItemsCount.textContent = '';
+    itemSearchEmpty.hidden = false;
+    itemSearchEmpty.textContent = 'Загрузка вещей…';
+  }
   dialog.showModal();
   (deleting ? cancel : categoryName).focus();
+  if (deleting) return;
+
+  try {
+    const response = await request('/api/admin/items');
+    const items = await response.json();
+    if (!dialog.open || operation !== currentOperation) return;
+    renderItemOptions(items, entry?.id);
+    itemPicker.disabled = false;
+    submit.disabled = false;
+  } catch {
+    if (!dialog.open || operation !== currentOperation) return;
+    itemSearchEmpty.textContent = 'Не удалось загрузить вещи. Откройте форму заново.';
+  }
 }
 
 form.addEventListener('submit', async event => {
@@ -122,7 +192,11 @@ form.addEventListener('submit', async event => {
   if (mode !== 'delete') {
     options.method = mode === 'create' ? 'POST' : 'PUT';
     options.headers = { 'Content-Type': 'application/json' };
-    options.body = JSON.stringify({ name, type: categoryType.value });
+    options.body = JSON.stringify({
+      name,
+      type: categoryType.value,
+      itemIds: new FormData(form).getAll('itemIds')
+    });
   }
 
   formError.textContent = '';
@@ -148,7 +222,7 @@ form.addEventListener('submit', async event => {
 });
 
 dialog.addEventListener('cancel', event => {
-  if (submit.disabled) event.preventDefault();
+  if (cancel.disabled) event.preventDefault();
 });
 cancel.addEventListener('click', () => dialog.close());
 add.addEventListener('click', () => openDialog('create'));
@@ -156,3 +230,13 @@ retry.addEventListener('click', loadCategories);
 search.addEventListener('input', renderCategories);
 typeFilter.addEventListener('change', renderCategories);
 loadCategories();
+
+itemSearch.addEventListener('input', filterItemOptions);
+itemOptions.addEventListener('change', updateSelectedItemsCount);
+clearItems.addEventListener('click', () => {
+  for (const checkbox of itemOptions.querySelectorAll('input:checked')) {
+    checkbox.checked = false;
+  }
+  updateSelectedItemsCount();
+  itemSearch.focus();
+});
