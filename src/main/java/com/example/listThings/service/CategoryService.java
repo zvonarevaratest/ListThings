@@ -57,8 +57,16 @@ public class CategoryService {
         String name = validatedName(nameValue);
         CategoryType type = validatedType(typeValue);
         Set<Long> itemIds = validatedItemIds(itemIdValues);
-        requireCategory(jdbc.update("UPDATE categories SET name = ?, category_type = ? WHERE id = ?",
-                name, type.name(), id));
+        String sql = "UPDATE categories SET name = ?, category_type = ? WHERE id = ?";
+        if (type != CategoryType.ACTIVITY) {
+            sql += " AND category_type <> 'ACTIVITY'";
+        }
+        int updated = jdbc.update(sql, name, type.name(), id);
+        if (updated == 0 && type != CategoryType.ACTIVITY && !jdbc.queryForList(
+                "SELECT id FROM categories WHERE id = ? AND category_type = 'ACTIVITY'", Long.class, id).isEmpty()) {
+            throw new ServiceException(ServiceException.Kind.INVALID_INPUT, "Тип цели поездки изменить нельзя.");
+        }
+        requireCategory(updated);
         // Missing itemIds retains the existing links. An explicit empty list clears them.
         if (itemIdValues != null) {
             jdbc.update("DELETE FROM item_categories WHERE category_id = ?", id);
@@ -148,7 +156,7 @@ public class CategoryService {
     }
 
     private enum CategoryType {
-        UNIVERSAL, TRANSPORT, ACCOMMODATION
+        UNIVERSAL, TRANSPORT, ACCOMMODATION, ACTIVITY
     }
 
     public record Category(String id, String name, String type, long itemCount) {

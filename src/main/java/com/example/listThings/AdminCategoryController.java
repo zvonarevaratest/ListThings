@@ -34,7 +34,7 @@ public class AdminCategoryController {
         this.categoryService = categoryService;
     }
 
-    @GetMapping("/admin/categories")
+    @GetMapping({"/admin/categories", "/admin/activities"})
     public String page() {
         return "forward:/admin-categories.html";
     }

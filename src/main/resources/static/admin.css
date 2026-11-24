@@ -36,6 +36,8 @@
 }
 .filters legend, #category-fields legend { padding: 0 6px; font-weight: 600; }
 .filters label, #name-field, .category-edit-fields label { display: grid; gap: 4px; min-width: 0; }
+.filters label[hidden], .category-edit-fields label[hidden] { display: none; }
+.filters:has(label[hidden]) { grid-template-columns: minmax(0, 1fr); }
 .filters input, .filters select, #item-name, .category-edit-fields input, .category-edit-fields select {
   width: 100%;
   min-width: 0;

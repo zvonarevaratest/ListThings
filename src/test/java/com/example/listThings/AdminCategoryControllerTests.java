@@ -47,7 +47,7 @@ class AdminCategoryControllerTests {
 
     private static final String CATEGORIES = "/api/admin/categories";
     private static final String INSERT = "INSERT INTO categories (name, category_type) VALUES (?, ?)";
-    private static final String UPDATE = "UPDATE categories SET name = ?, category_type = ? WHERE id = ?";
+    private static final String UPDATE = "UPDATE categories SET name = ?, category_type = ? WHERE id = ? AND category_type <> 'ACTIVITY'";
     private static final String DELETE = "DELETE FROM categories WHERE id = ?";
 
     private static final String DELETE_LINKS = "DELETE FROM item_categories WHERE category_id = ?";
@@ -76,8 +76,44 @@ class AdminCategoryControllerTests {
                 .andExpect(forwardedUrl("/admin-categories.html"));
     }
 
+    @Test
+    void opensActivityAdminPage() throws Exception {
+        mvc.perform(get("/admin/activities"))
+                .andExpect(status().isOk())
+                .andExpect(forwardedUrl("/admin-categories.html"));
+    }
+
+    @Test
+    void preventsChangingAnActivityToAnOrdinaryCategory() throws Exception {
+        when(jdbc.queryForList("SELECT id FROM categories WHERE id = ? AND category_type = 'ACTIVITY'",
+                Long.class, 7L)).thenReturn(List.of(7L));
+
+        mvc.perform(put(CATEGORIES + "/7").contentType(MediaType.APPLICATION_JSON)
+                        .content(body("Beach", "TRANSPORT")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Тип цели поездки изменить нельзя."));
+
+        verify(transactions).rollback(transaction);
+    }
+
+    @Test
+    void renamesAnActivityAndUpdatesItsItems() throws Exception {
+        String sql = "UPDATE categories SET name = ?, category_type = ? WHERE id = ?";
+        when(jdbc.update(sql, "Beach", "ACTIVITY", 7L)).thenReturn(1);
+
+        mvc.perform(put(CATEGORIES + "/7").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Beach","type":"ACTIVITY","itemIds":["2","3"]}
+                                """))
+                .andExpect(status().isNoContent());
+
+        verify(jdbc).update(DELETE_LINKS, 7L);
+        verify(jdbc).batchUpdate(eq(INSERT_LINK), selectedLinks());
+        verify(transactions).commit(transaction);
+    }
+
     @ParameterizedTest
-    @ValueSource(strings = {"UNIVERSAL", "TRANSPORT", "ACCOMMODATION"})
+    @ValueSource(strings = {"UNIVERSAL", "TRANSPORT", "ACCOMMODATION", "ACTIVITY"})
     void createsCategoryWithAValidType(String type) throws Exception {
         mvc.perform(post(CATEGORIES).contentType(MediaType.APPLICATION_JSON)
                         .content(body("  Travel category  ", type)))
