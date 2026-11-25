@@ -68,6 +68,9 @@ public class AdminCategoryController {
             case NOT_FOUND -> HttpStatus.NOT_FOUND;
             case DUPLICATE_NAME -> HttpStatus.CONFLICT;
         };
+
+        log.warn("Admin category request failed: {}", exception.kind());
+
         return ProblemDetail.forStatusAndDetail(status, exception.getMessage());
     }
 
